@@ -13,8 +13,12 @@ package testFramework;
         endfunction
 
         // override this in your TEST(...)
-        virtual function void run();
+        virtual function void runFunct();
         endfunction
+
+        // override this in your TEST(...)
+        virtual task runTask();
+        endtask
 
         // helper: called by TEST body
         function void EXPECT_EQ_INT(int a, int b, string msg="");
@@ -67,8 +71,18 @@ package testFramework;
                 $display("--- FAIL  %0s (%0d failure%s)", m_testName, m_failures, (m_failures>1?"s":""));
             end
         endfunction
-    endclass
 
+            // now a task so we can call run() (which may do delays)
+        task runAndReportTask();      
+            $display("=== RUN   %0s", m_testName);
+            run();  // ok, run is a task
+      if (failures == 0)
+        $display("--- PASS  %0s", m_testName);
+      else
+        $display("--- FAIL  %0s (%0d failure%s)",
+                 m_testName, failures, (failures>1?"s":""));
+    endtask
+    endclass
 
     // Manager: holds all registered tests
     class TestManager;
@@ -128,13 +142,13 @@ package testFramework;
     endclass
 
     // Macro to define + register a test case
-    `define TEST(SUITE, NAME)                                
+    `define TEST_FUNCTION(SUITE, NAME)                                
     class SUITE``_``NAME extends TestCase;                
         function new();
             // call the parent class's constructor 
             super.new(`"`SUITE`.`NAME`"); 
         endfunction 
-        virtual function void run();                        
+        virtual function void runFunct();                        
 
     `define ENDTEST                                          
         endfunction                                          
@@ -142,13 +156,41 @@ package testFramework;
     initial TestManager::register(new SUITE``_``NAME());   
 
     // parameterized test case
-    `define TEST_N(SUITE, NAME, WIDTH)                      
+    `define TEST_FUNCTION_N(SUITE, NAME, WIDTH)                      
     class SUITE``_``NAME extends TestCase#(WIDTH);
         function new();
             // call the parent class's constructor 
             super.new(`"`SUITE`.`NAME`<`WIDTH`>`"); 
         endfunction
-        virtual function void run();
+        virtual function void runFunct();
+
+    `define ENDTEST_N
+        endfunction
+    endclass
+    initial TestManager::register(new SUITE``_``NAME());
+
+    // Macro to define + register a test case
+    `define TEST_TASK(SUITE, NAME)                                
+    class SUITE``_``NAME extends TestCase;                
+        function new();
+            // call the parent class's constructor 
+            super.new(`"`SUITE`.`NAME`"); 
+        endfunction 
+        virtual function void runTask();                        
+
+    `define ENDTEST                                          
+        endfunction                                          
+    endclass                                              
+    initial TestManager::register(new SUITE``_``NAME());   
+
+    // parameterized test case
+    `define TEST_TASK_N(SUITE, NAME, WIDTH)                      
+    class SUITE``_``NAME extends TestCase#(WIDTH);
+        function new();
+            // call the parent class's constructor 
+            super.new(`"`SUITE`.`NAME`<`WIDTH`>`"); 
+        endfunction
+        virtual function void runTask();
 
     `define ENDTEST_N
         endfunction
@@ -254,3 +296,126 @@ package my_tests;
   `ENDTEST_N
 
 endpackage
+
+
+
+
+package testFramework;
+
+  // Base class for every test
+  class TestCase #(parameter N = 32);
+    string m_testName = "empty";
+    int    failures  = 0;
+
+    function new(string name);
+      m_testName = name;
+      failures   = 0;
+    endfunction
+
+    // override this in your TEST(...)
+    virtual task run();
+      // default: do nothing
+    endtask
+
+    // helpers (can stay functions, they don't consume time)
+    function void EXPECT_EQ_INT(int a, int b, string msg = "");
+      if (a !== b) begin
+        $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)",
+               m_testName, msg, a, b);
+        failures++;
+      end
+    endfunction
+
+    /* ... EXPECT_EQ_STR, EXPECT_EQ_LOGIC as before ... 
+
+    // now a task so we can call run() (which may do delays)
+    task run_and_report();
+      $display("=== RUN   %0s", m_testName);
+      run();  // ok, run is a task
+      if (failures == 0)
+        $display("--- PASS  %0s", m_testName);
+      else
+        $display("--- FAIL  %0s (%0d failure%s)",
+                 m_testName, failures, (failures>1?"s":""));
+    endtask
+  endclass
+
+  // Manager: holds all registered tests
+  class TestManager;
+    static TestCase tests[$];
+    static int      totalFailures;
+
+    // called by each TEST’s initial block
+    static function void register(TestCase tc);
+      tests.push_back(tc);
+    endfunction
+
+    // call this once from tb to run everything
+    static task runAll();
+      totalFailures = 0;
+      foreach (tests[i]) begin
+        tests[i].run_and_report();
+        totalFailures += tests[i].failures;
+      end
+      $display("=== SUMMARY: %0d test%s, %0d failure%s",
+               tests.size(), (tests.size()>1?"s":""), 
+               totalFailures, (totalFailures>1?"s":""));
+      if (totalFailures) $fatal;
+    endtask
+  endclass
+
+  // Macro to define + register a test case
+  `define TEST(SUITE, NAME)                                \
+    class SUITE``_``NAME extends TestCase;                  \
+      function new();                                       \
+        super.new("``SUITE.``NAME");                        \
+      endfunction                                           \
+      virtual task run();
+
+  `define ENDTEST                                         \
+    endtask                                               \
+    endclass                                              \
+    initial TestManager::register(new SUITE``_``NAME());
+
+  // parameterized TEST_N analogously: make run a task, register it
+  /* ... 
+endpackage
+
+
+
+
+
+
+
+
+package my_tests;
+  import testFramework::*;
+
+  // simple arithmetic test
+  `TEST(Math, Addition)
+    // these run inside a task, so we can wait for clocks, etc.
+    Start = 1;
+    Reset = 1;
+    repeat (1) @(posedge clk);
+
+    Reset = 0;
+    repeat (N) @(posedge clk);
+
+    EXPECT_EQ_INT(ready, 1, "module should be ready after N cycles");
+  `ENDTEST
+
+  // string comparisons still no time needed
+  `TEST(Strings, Compare)
+    string a = "foo", b = "foo", c = "bar";
+    EXPECT_EQ_INT((a==b), 1, "a==b");
+    EXPECT_EQ_INT((a==c), 0, "a!=c");
+  `ENDTEST
+endpackage
+
+// in your top-level testbench:
+module tb;
+  // clock generation, DUT instantiation, etc.
+  initial begin
+    my_tests::TestManager::runAll();
+  end
+endmodule
