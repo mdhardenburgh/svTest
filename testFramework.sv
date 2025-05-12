@@ -59,9 +59,9 @@ package testFramework;
         endfunction
 
         // hook to run & report
-        function void runAndReport();
+        function void runAndReportFunction();
             $display("=== RUN   %0s", m_testName);
-            run();
+            runFunction();
             if (failures == 0) 
             begin
                 $display("--- PASS  %0s", m_testName);
@@ -74,14 +74,17 @@ package testFramework;
 
             // now a task so we can call run() (which may do delays)
         task runAndReportTask();      
-            $display("=== RUN   %0s", m_testName);
-            run();  // ok, run is a task
-      if (failures == 0)
-        $display("--- PASS  %0s", m_testName);
-      else
-        $display("--- FAIL  %0s (%0d failure%s)",
-                 m_testName, failures, (failures>1?"s":""));
-    endtask
+          $display("=== RUN   %0s", m_testName);
+          runTask();  // ok, run is a task
+        if (failures == 0)
+        begin
+          $display("--- PASS  %0s", m_testName);
+        end
+        else
+        begin
+          $display("--- FAIL  %0s (%0d failure%s)", m_testName, failures, (failures>1?"s":""));
+        end
+       endtask
     endclass
 
     // Manager: holds all registered tests
