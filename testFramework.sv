@@ -13,18 +13,18 @@ package testFramework;
         endfunction
 
         // override this in your TEST(...)
-        virtual function void runFunct();
+        virtual function void runFunction();
         endfunction
 
         // override this in your TEST(...)
-        virtual task runTask();
+        virtual task runTask;
         endtask
 
         // helper: called by TEST body
         function void EXPECT_EQ_INT(int a, int b, string msg="");
             if (a !== b) 
             begin
-                $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", name, msg, a, b);
+                $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
                 m_failures++;
             end
         endfunction
@@ -33,7 +33,7 @@ package testFramework;
         function void EXPECT_EQ_STR(string a, string b, string msg="");
             if (a != b) 
             begin
-                $error("[%0s] EXPECT_EQ failed: %s  (got %s, want %s)", name, msg, a, b);
+                $error("[%0s] EXPECT_EQ failed: %s  (got %s, want %s)", m_testName, msg, a, b);
                 m_failures++;
             end
         endfunction
@@ -44,15 +44,15 @@ package testFramework;
             begin
                 if(format == "decimal")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", name, msg, a, b);
+                    $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
                 end
                 else if(format == "hex")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got 0x%h, want 0x%h)", name, msg, a, b);
+                    $error("[%0s] EXPECT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
                 end
                 else if(format == "binary")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got %b, want %b)", name, msg, a, b);
+                    $error("[%0s] EXPECT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
                 end
                 m_failures++;
             end
@@ -62,7 +62,7 @@ package testFramework;
         function void runAndReportFunction();
             $display("=== RUN   %0s", m_testName);
             runFunction();
-            if (failures == 0) 
+            if (m_failures == 0) 
             begin
                 $display("--- PASS  %0s", m_testName);
             end 
@@ -76,43 +76,37 @@ package testFramework;
         task runAndReportTask();      
             $display("=== RUN   %0s", m_testName);
             runTask();  // ok, run is a task
-            if (failures == 0)
+            if (m_failures == 0)
             begin
                 $display("--- PASS  %0s", m_testName);
             end
             else
             begin
-                $display("--- FAIL  %0s (%0d failure%s)", m_testName, failures, (failures>1?"s":""));
+                $display("--- FAIL  %0s (%0d failure%s)", m_testName, m_failures, (m_failures>1?"s":""));
             end
         endtask 
     endclass
 
     // Manager: holds all registered tests
     class TestManager;
-      static TestCase m_tests[$];
-      static int      m_totalFailures = 0;
+		static TestCase m_tests[$];
+    	static int m_totalFailures = 0;
 
         // called by each TEST’s initial block
         static function void register(TestCase tc);
             m_tests.push_back(tc);
         endfunction
 
-        static function void runSpecific(string testName);
+        static function void runSpecificFunction(string testName);
+			int found;
             m_totalFailures = 0;
-            int found = 0;
+            found = 0;
             foreach (m_tests[i]) 
             begin
                 found = 1;
-                if(testName == tests[i].m_testName)
+                if(testName == m_tests[i].m_testName)
                 begin
-                    if(str_find(m_tests.m_testName, "_TASK_"))
-                    begin
-                        m_tests[i].runAndReportTask();
-                    end
-                    if(str_find(m_tests.m_testName, "_FUNCTION_"))
-                    begin
-                        m_tests[i].runAndReportFunction();
-                    end
+                    m_tests[i].runAndReportFunction();
                     m_totalFailures += m_tests[i].m_failures;
                     break;
                 end
@@ -123,32 +117,58 @@ package testFramework;
             end
             else
             begin
-                $error("TestManager: no test named '%0s' found", targetName);
+                $error("TestManager: no test named '%0s' found", testName);
                 $fatal;
             end
         endfunction
 
+        static task runSpecificTask(string testName);
+			int found;
+            m_totalFailures = 0;
+            found = 0;
+            foreach (m_tests[i]) 
+            begin
+                found = 1;
+                if(testName == m_tests[i].m_testName)
+                begin
+                    m_tests[i].runAndReportTask();
+                    m_totalFailures += m_tests[i].m_failures;
+                    break;
+                end
+            end
+            if(found)
+            begin
+                summary();
+            end
+            else
+            begin
+                $error("TestManager: no test named '%0s' found", testName);
+                $fatal;
+            end
+        endtask
+
         // call this once from tb to run everything
-        static function void runAll();
+        static task runAllTasks();
             m_totalFailures = 0;
             foreach (m_tests[i]) 
             begin
-                if(str_find(m_tests.m_testName, "_TASK_"))
-                begin
-                    m_tests[i].runAndReportTask();
-                end
-                if(str_find(m_tests.m_testName, "_FUNCTION_"))
-                begin
-                    m_tests[i].runAndReportFunction();
-                end
+                m_tests[i].runAndReportTask();
+                m_totalFailures += m_tests[i].m_failures;
+            end
+            summary();
+        endtask
+        static function void runAllFunctions();
+            m_totalFailures = 0;
+            foreach (m_tests[i]) 
+            begin
+                m_tests[i].runAndReportFunction();
                 m_totalFailures += m_tests[i].m_failures;
             end
             summary();
         endfunction
 
-        static function void summary()
-            $display(
-                "=== SUMMARY: %0d test%s, %0d failure%s",
+        static function void summary();
+            $display("=== SUMMARY: %0d test%s, %0d failure%s",
                 m_tests.size(),
                 (m_tests.size()>1?"s":""), 
                 m_totalFailures,
@@ -156,97 +176,77 @@ package testFramework;
             );
             if (m_totalFailures) $fatal;
         endfunction
-
-        function automatic int str_find
-        (
-            input string  parentString, // haystack
-            input string  subString, // needle
-            input int     start = 0       // optional starting index (0-based)
-        );
-
-            int parentStringLen = parentString.len(); //hlen
-            int subStringLen = subString.len(); //nlen
-            if (subStringLen == 0) 
-                return start <= parentStringLen ? start : -1;
-            if (start < 0 || start + subStringLen > parentStringLen) 
-                return -1;
-
-            // slide a window of size subStringLen over parentString
-            for (int iIter = start; iIter <= parentStringLen - subStringLen; iIter++) 
-            begin
-                bit match = 1;
-                // now go character by character and check if window == subString
-                for (int jIter = 0; jIter < subStringLen; jIter++) 
-                begin
-                    if (parentString.getc(iIter + jIter) != subString.getc(jIter)) 
-                    begin
-                        match = 0;
-                        break;
-                    end
-                end
-                if (match)
-                    return iIter;
-            end
-            return -1;
-        endfunction
     endclass
 
     // Macro to define + register a test case
-    `define TEST_FUNCTION(SUITE, NAME)                                
-    class SUITE``_FUNCTION_``NAME extends TestCase;                
-        function new();
-            // call the parent class's constructor 
-            super.new(`"`SUITE`.`NAME`"); 
-        endfunction 
-        virtual function void runFunct();                        
+    `define TEST_FUNCTION(SUITE, NAME) \
+    class SUITE``_``NAME``_FUNCTION_`` extends TestCase; \
+        function new(); \
+            super.new($sformatf("%s.%s_FUNCTION", `"SUITE`", `"NAME`")); \
+        endfunction \
+        virtual function void runFunct(); 
 
-    `define END_TEST_FUNCTION                                          
-        endfunction                                          
-    endclass                                              
-    initial TestManager::register(new SUITE``_FUNCTION_``NAME());   
+    `define END_TEST_FUNCTION(SUITE, NAME) \
+        endfunction \
+    endclass \
+    initial \
+    begin \
+        SUITE``_``NAME``_FUNCTION tc = new(); \
+        TestManager::register(tc); \
+    end
 
     // parameterized test case
-    `define TEST_FUNCTION_N(SUITE, NAME, WIDTH)                      
-    class SUITE``_FUNCTION_``NAME extends TestCase#(WIDTH);
-        function new();
-            // call the parent class's constructor 
-            super.new(`"`SUITE`.`NAME`<`WIDTH`>`"); 
-        endfunction
+    `define TEST_FUNCTION_N(SUITE, NAME, WIDTH) \
+    class SUITE``_``NAME``_FUNCTION_`` extends TestCase#(WIDTH); \
+        function new(); \
+            super.new($sformatf("%s.%s_FUNCTION_%s", `"SUITE`", `"NAME`",`"WIDTH`")); \
+        endfunction \
         virtual function void runFunct();
 
-    `define END_TEST_FUNCTION_N
-        endfunction
-    endclass
-    initial TestManager::register(new SUITE``_FUNCTION_``NAME());
+    `define END_TEST_FUNCTION_N(SUITE, NAME, WIDTH) \
+        endfunction \
+    endclass \
+    initial \
+    begin \
+        SUITE``_``NAME``_FUNCION_``WIDTH tc = new(); \
+        TestManager::register(tc); \
+    end
 
     // Macro to define + register a test case
-    `define TEST_TASK(SUITE, NAME)                                
-    class SUITE``_TASK_``NAME extends TestCase;                
-        function new();
-            // call the parent class's constructor 
-            super.new(`"`SUITE`.`NAME`"); 
-        endfunction 
-        virtual function void runTask();                        
+	`define TEST_TASK(SUITE, NAME) \
+    class SUITE``_``NAME``_TASK extends TestCase; \
+        function new(); \
+            super.new($sformatf("%s.%s_TASK", `"SUITE`", `"NAME`")); \
+        endfunction \
+        virtual task runTask;
 
-    `define END_TEST_TASK                                          
-        endfunction                                          
-    endclass                                              
-    initial TestManager::register(new SUITE``_TASK_``NAME());   
+    `define END_TEST_TASK(SUITE, NAME) \
+		endtask \
+    endclass \
+    initial \
+    begin \
+        SUITE``_``NAME``_TASK tc = new(); \
+        TestManager::register(tc); \
+    end
 
     // parameterized test case
-    `define TEST_TASK_N(SUITE, NAME, WIDTH)                      
-    class SUITE``_TASK_``NAME extends TestCase#(WIDTH);
-        function new();
-            // call the parent class's constructor 
-            super.new(`"`SUITE`.`NAME`<`WIDTH`>`"); 
-        endfunction
-        virtual function void runTask();
+    `define TEST_TASK_N(SUITE, NAME, WIDTH) \
+    class SUITE``_``NAME``_TASK_``WIDTH extends TestCase#(WIDTH); \
+        function new(); \
+            super.new($sformatf("%s.%s_TASK_%s", `"SUITE`", `"NAME`",`"WIDTH`")); \
+        endfunction \
+        virtual task runTask;
 
-    `define END_TEST_TASK_N
-        endfunction
-    endclass
-    initial TestManager::register(new SUITE``_TASK_``NAME());
+    `define END_TEST_TASK_N(SUITE, NAME, WIDTH) \
+		endtask \
+    endclass \
+    initial \
+    begin \
+        SUITE``_``NAME``_TASK_``WIDTH tc = new(); \
+        TestManager::register(tc); \
+    end
 endpackage
+`endif
 /**
 //-----------------------------------------------------------------------------
 // FILE: my_tests.sv
@@ -376,7 +376,7 @@ package testFramework;
       end
     endfunction
 
-    /* ... EXPECT_EQ_STR, EXPECT_EQ_LOGIC as before ... 
+     ... EXPECT_EQ_STR, EXPECT_EQ_LOGIC as before ... 
 
     // now a task so we can call run() (which may do delays)
     task run_and_report();
@@ -428,7 +428,7 @@ package testFramework;
     initial TestManager::register(new SUITE``_``NAME());
 
   // parameterized TEST_N analogously: make run a task, register it
-  /* ... 
+   ... 
 endpackage
 
 
@@ -469,3 +469,4 @@ module tb;
     my_tests::TestManager::runAll();
   end
 endmodule
+*/
