@@ -62,8 +62,8 @@ package testFramework;
             return m_testName;
         endfunction
 
-        function void setFailures(int concurrentFailures)
-            m_failures = m_failures + concurrentFailures;
+        function void setFailures(int concurrentFails);
+            m_failures = m_failures + concurrentFails;
         endfunction
 
         // hook to run & report
@@ -81,7 +81,7 @@ package testFramework;
         endfunction
 
         // now a task so we can call run() (which may do delays)
-        task runTask();
+        task runTaskTest();
             $display("=== RUN   %0s", m_testName);
             runTask();  // ok, run is a task
         endtask
@@ -153,8 +153,8 @@ package testFramework;
                 if(testName == m_tests[i].m_testName)
                 begin
                     concurrentTask = m_tests[i].getName();
-                    m_tests[i].runTask();
-                    m_tests[i].concurrentFailures(concurrentFailure);
+                    m_tests[i].runTaskTest();
+                    m_tests[i].setFailures(concurrentFailure);
                     m_tests[i].reportTask();
                     concurrentFailure = 0; // reset concurrentFailure at the end of the task
                     m_totalFailures += m_tests[i].m_failures;
@@ -178,8 +178,8 @@ package testFramework;
             foreach (m_tests[i]) 
             begin
                 concurrentTask = m_tests[i].getName();
-                m_tests[i].runTask();
-                m_tests[i].concurrentFailures(concurrentFailure);
+                m_tests[i].runTaskTest();
+                m_tests[i].setFailures(concurrentFailure);
                 m_tests[i].reportTask();
                 concurrentFailure = 0; // reset concurrentFailure at the end of the task
                 m_totalFailures += m_tests[i].m_failures;
@@ -278,7 +278,7 @@ package testFramework;
     `define CONCURENT_ASSERTIONS(SUITE) \
     module SUITE``_CONCURENT_ASSERTIONS`` 
 
-    `define END_CONCURENT_ASSERTIONS
+    `define END_CONCURENT_ASSERTIONS \
     endmodule
 
     `define CONCURENT_PROPERTY_ERROR(SUITE, NAME) \
