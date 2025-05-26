@@ -295,3 +295,229 @@ package testFramework;
 
 endpackage
 `endif
+<<<<<<< HEAD
+=======
+/**
+//-----------------------------------------------------------------------------
+// FILE: my_tests.sv
+//-----------------------------------------------------------------------------
+`include "test_framework.sv"
+import test_fw::*;
+
+package my_tests;
+
+  // a simple test
+  `TEST(Math, Addition)
+    expect_eq(1+1, 2, "1+1==2");
+    expect_eq(2+2, 5, "2+2==5 should fail");
+  `ENDTEST
+
+  // another test
+  `TEST(Strings, Compare)
+    string a = "foo", b = "foo", c = "bar";
+    expect_eq((a==b), 1, "a==b");
+    expect_eq((a==c), 0, "a!=c");
+  `ENDTEST
+
+endpackage
+
+//-----------------------------------------------------------------------------
+// FILE: tb.sv
+//-----------------------------------------------------------------------------
+`timescale 1ns/1ps
+`include "test_framework.sv"
+`include "my_tests.sv"
+
+import test_fw::*;
+import my_tests::*;
+
+module tb;
+  initial begin
+    // wait 1 timestep so all test-registrations (initials) have run
+    #1;  
+    TestManager::run_all();
+  end
+endmodule
+
+package my_tests;
+  import testFramework::*;
+
+  `TEST_N(SeqCounter, Basic, 16)
+    // ----------------------------------------------------------------
+    // TestCase#(WIDTH=N) provides 'N' for both EXPECT_EQ_LOGIC and
+    // for sizing your DUT.
+    // ----------------------------------------------------------------
+
+    // test‐local parameter
+    localparam int m_clockCycle = 10;
+
+    // clock & control signals
+    logic clk;
+    logic rst;
+    logic start;
+    logic [N-1:0] count;
+
+    // instantiate DUT, parameterized by WIDTH=N
+    SeqCounter #(.WIDTH(N)) dut (
+      .clk   (clk),
+      .rst   (rst),
+      .start (start),
+      .count (count)
+    );
+
+    // give our test a readable name
+    function new();
+      super.new("SeqCounter.Basic<" `STRINGIFY(N)`>");
+    endfunction
+
+    virtual function void run();
+      //---- clock generation ----
+      clk = 0;
+      fork
+        forever #(m_clockCycle/2) clk = ~clk;
+      join_none
+
+      //---- apply reset + start ----
+      rst   = 1;
+      start = 1;
+      #(m_clockCycle);       // hold for one full clock
+      rst   = 0;
+      start = 0;
+
+      //---- wait N clock cycles ----
+      repeat (N) @(posedge clk);
+
+      //---- check the counter ----
+      EXPECT_EQ_LOGIC(count, N, "count should equal N after N cycles", "decimal");
+
+      //---- tidy up ----
+      disable fork;  // stop the clk generator
+    endfunction
+  `ENDTEST_N
+
+endpackage
+
+
+
+
+package testFramework;
+
+  // Base class for every test
+  class TestCase #(parameter N = 32);
+    string m_testName = "empty";
+    int    failures  = 0;
+
+    function new(string name);
+      m_testName = name;
+      failures   = 0;
+    endfunction
+
+    // override this in your TEST(...)
+    virtual task run();
+      // default: do nothing
+    endtask
+
+    // helpers (can stay functions, they don't consume time)
+    function void EXPECT_EQ_INT(int a, int b, string msg = "");
+      if (a !== b) begin
+        $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)",
+               m_testName, msg, a, b);
+        failures++;
+      end
+    endfunction
+
+     ... EXPECT_EQ_STR, EXPECT_EQ_LOGIC as before ... 
+
+    // now a task so we can call run() (which may do delays)
+    task run_and_report();
+      $display("=== RUN   %0s", m_testName);
+      run();  // ok, run is a task
+      if (failures == 0)
+        $display("--- PASS  %0s", m_testName);
+      else
+        $display("--- FAIL  %0s (%0d failure%s)",
+                 m_testName, failures, (failures>1?"s":""));
+    endtask
+  endclass
+
+  // Manager: holds all registered tests
+  class TestManager;
+    static TestCase tests[$];
+    static int      totalFailures;
+
+    // called by each TEST’s initial block
+    static function void register(TestCase tc);
+      tests.push_back(tc);
+    endfunction
+
+    // call this once from tb to run everything
+    static task runAll();
+      totalFailures = 0;
+      foreach (tests[i]) begin
+        tests[i].run_and_report();
+        totalFailures += tests[i].failures;
+      end
+      $display("=== SUMMARY: %0d test%s, %0d failure%s",
+               tests.size(), (tests.size()>1?"s":""), 
+               totalFailures, (totalFailures>1?"s":""));
+      if (totalFailures) $fatal;
+    endtask
+  endclass
+
+  // Macro to define + register a test case
+  `define TEST(SUITE, NAME)                                \
+    class SUITE``_``NAME extends TestCase;                  \
+      function new();                                       \
+        super.new("``SUITE.``NAME");                        \
+      endfunction                                           \
+      virtual task run();
+
+  `define ENDTEST                                         \
+    endtask                                               \
+    endclass                                              \
+    initial TestManager::register(new SUITE``_``NAME());
+
+  // parameterized TEST_N analogously: make run a task, register it
+   ... 
+endpackage
+
+
+
+
+
+
+
+
+package my_tests;
+  import testFramework::*;
+
+  // simple arithmetic test
+  `TEST(Math, Addition)
+    // these run inside a task, so we can wait for clocks, etc.
+    Start = 1;
+    Reset = 1;
+    repeat (1) @(posedge clk);
+
+    Reset = 0;
+    repeat (N) @(posedge clk);
+
+    EXPECT_EQ_INT(ready, 1, "module should be ready after N cycles");
+  `ENDTEST
+
+  // string comparisons still no time needed
+  `TEST(Strings, Compare)
+    string a = "foo", b = "foo", c = "bar";
+    EXPECT_EQ_INT((a==b), 1, "a==b");
+    EXPECT_EQ_INT((a==c), 0, "a!=c");
+  `ENDTEST
+endpackage
+
+// in your top-level testbench:
+module tb;
+  // clock generation, DUT instantiation, etc.
+  initial begin
+    my_tests::TestManager::runAll();
+  end
+endmodule
+*/
+>>>>>>> 6ea35c3c964cc6e9fb9c0908f763240911eb8eb9
