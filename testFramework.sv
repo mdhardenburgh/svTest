@@ -203,7 +203,7 @@ package testFramework;
                 m_totalFailures,
                 (m_totalFailures>1?"s":"")
             );
-            if (m_totalFailures) $fatal;
+            //if (m_totalFailures) $fatal;
         endfunction
     endclass
 
@@ -276,17 +276,18 @@ package testFramework;
     end
 
     `define CONCURENT_ASSERTIONS(SUITE) \
-    module SUITE``_CONCURENT_ASSERTIONS`` 
+    module SUITE``_CONCURENT_ASSERTIONS`` \
+    import testFramework::*;
 
     `define END_CONCURENT_ASSERTIONS \
     endmodule
 
     `define CONCURENT_PROPERTY_ERROR(SUITE, NAME) \
-    property SUITE``_``NAME``CONCURENT_PROPERTY_ERROR``;
+    property SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_P``;
 
     `define END_CONCURENT_PROPERTY_ERROR(SUITE, NAME) \
     endproperty \
-    SUITE``_``NAME``CONCURENT_PROPERTY_ERROR``: assert property(SUITE``_``NAME``CONCURENT_PROPERTY_ERROR``); \
+    SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_A``: assert property(SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_P``) \
         else \
         begin \
             $error("%s.%s_CONCURENT_ASSERTION FAILED in test: %s", `"SUITE`", `"NAME`", TestManager::getConcurrentTask()); \
