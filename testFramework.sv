@@ -203,7 +203,6 @@ package testFramework;
                 m_totalFailures,
                 (m_totalFailures>1?"s":"")
             );
-            //if (m_totalFailures) $fatal;
         endfunction
     endclass
 
