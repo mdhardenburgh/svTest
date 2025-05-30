@@ -1,9 +1,9 @@
 `ifndef TEST_FRAMEWORK
 `define TEST_FRAMEWORK
 package testFramework;
-
+    
     // Base class for every test
-    class TestCase #(parameter N = 32);
+    class TestCase;
         string m_testName = "empty";
         int m_failures = 0;
 
@@ -21,25 +21,7 @@ package testFramework;
         endtask
 
         // helper: called by TEST body
-        function void EXPECT_EQ_INT(int a, int b, string msg="");
-            if (a !== b) 
-            begin
-                $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
-                m_failures++;
-            end
-        endfunction
-
-        // helper: called by TEST body
-        function void EXPECT_EQ_STR(string a, string b, string msg="");
-            if (a != b) 
-            begin
-                $error("[%0s] EXPECT_EQ failed: %s  (got %s, want %s)", m_testName, msg, a, b);
-                m_failures++;
-            end
-        endfunction
-        
-        // helper: called by TEST body
-        function void EXPECT_EQ_LOGIC(logic[N-1:0] a, logic[N-1:0] b, string msg="", string format="decimal");
+        function void EXPECT_EQ_LOGIC(logic[31:0] a, logic[31:0] b, string msg="", string format="decimal");
             if (a !== b) 
             begin
                 if(format == "decimal")
@@ -54,6 +36,24 @@ package testFramework;
                 begin
                     $error("[%0s] EXPECT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
                 end
+                m_failures++;
+            end
+        endfunction
+
+        // helper: called by TEST body
+        function void EXPECT_EQ_INT(int a, int b, string msg="");
+            if (a !== b) 
+            begin
+                $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
+                m_failures++;
+            end
+        endfunction
+
+        // helper: called by TEST body
+        function void EXPECT_EQ_STR(string a, string b, string msg="");
+            if (a != b) 
+            begin
+                $error("[%0s] EXPECT_EQ failed: %s  (got %s, want %s)", m_testName, msg, a, b);
                 m_failures++;
             end
         endfunction
@@ -96,6 +96,33 @@ package testFramework;
                 $display("--- FAIL  %0s (%0d failure%s)", m_testName, m_failures, (m_failures>1?"s":""));
             end
         endtask
+    endclass
+
+    class TestCaseParameterized #(parameter N = 32) extends TestCase;
+
+        function new(string name);
+            super.new(name);
+        endfunction
+
+        // helper: called by TEST body
+        function void EXPECT_EQ_LOGIC_N(logic[N-1:0] a, logic[N-1:0] b, string msg="", string format="decimal");
+            if (a !== b) 
+            begin
+                if(format == "decimal")
+                begin
+                    $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
+                end
+                else if(format == "hex")
+                begin
+                    $error("[%0s] EXPECT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
+                end
+                else if(format == "binary")
+                begin
+                    $error("[%0s] EXPECT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
+                end
+                m_failures++;
+            end
+        endfunction
     endclass
 
     // Manager: holds all registered tests
@@ -225,7 +252,7 @@ package testFramework;
 
     // parameterized test case
     `define TEST_FUNCTION_N(SUITE, NAME, WIDTH) \
-    class SUITE``_``NAME``_FUNCTION_`` extends TestCase#(WIDTH); \
+    class SUITE``_``NAME``_FUNCTION_`` extends TestCaseParameterized#(WIDTH); \
         function new(); \
             super.new($sformatf("%s.%s_FUNCTION_%s", `"SUITE`", `"NAME`",`"WIDTH`")); \
         endfunction \
@@ -259,7 +286,7 @@ package testFramework;
 
     // parameterized test case
     `define TEST_TASK_N(SUITE, NAME, WIDTH) \
-    class SUITE``_``NAME``_TASK_``WIDTH extends TestCase#(WIDTH); \
+    class SUITE``_``NAME``_TASK_``WIDTH extends TestCaseParameterized#(WIDTH); \
         function new(); \
             super.new($sformatf("%s.%s_TASK_%s", `"SUITE`", `"NAME`",`"WIDTH`")); \
         endfunction \
@@ -291,6 +318,17 @@ package testFramework;
         begin \
             $error("%s.%s_CONCURENT_ASSERTION FAILED in test: %s", `"SUITE`", `"NAME`", TestManager::getConcurrentTask()); \
             TestManager::setConcurentFailure(); \
+        end
+
+    `define END_CONCURENT_PROPERTY_ERROR_PRINT(SUITE, NAME) \
+    endproperty \
+    SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_A``: assert property(SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_P``) \
+        else \
+        begin \
+            $error("%s.%s_CONCURENT_ASSERTION FAILED in test: %s", `"SUITE`", `"NAME`", TestManager::getConcurrentTask()); \
+            TestManager::setConcurentFailure();
+
+    `define END_CONCURENT_PROPERTY_ERROR_PRINT_END_PRINT \
         end
 
 endpackage
