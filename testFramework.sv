@@ -280,7 +280,7 @@ package testFramework;
     endclass \
     initial \
     begin \
-        SUITE``_``NAME``_TASK tc = new(); \
+        automatic SUITE``_``NAME``_TASK tc = new(); \
         TestManager::register(tc); \
     end
 
@@ -297,7 +297,7 @@ package testFramework;
     endclass \
     initial \
     begin \
-        SUITE``_``NAME``_TASK_``WIDTH tc = new(); \
+        automatic SUITE``_``NAME``_TASK_``WIDTH tc = new(); \
         TestManager::register(tc); \
     end
 
