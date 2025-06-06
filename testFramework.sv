@@ -41,6 +41,26 @@ package testFramework;
         endfunction
 
         // helper: called by TEST body
+        function void EXPECT_NOT_EQ_LOGIC(logic[31:0] a, logic[31:0] b, string msg="", string format="decimal");
+            if (a == b) 
+            begin
+                if(format == "decimal")
+                begin
+                    $error("[%0s] EXPECT_NOT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
+                end
+                else if(format == "hex")
+                begin
+                    $error("[%0s] EXPECT_NOT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
+                end
+                else if(format == "binary")
+                begin
+                    $error("[%0s] EXPECT_NOT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
+                end
+                m_failures++;
+            end
+        endfunction
+
+        // helper: called by TEST body
         function void EXPECT_EQ_INT(int a, int b, string msg="");
             if (a !== b) 
             begin
