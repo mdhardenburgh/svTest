@@ -1,3 +1,10 @@
+`ifndef __FILE__
+  `define __FILE__ "unknown"
+`endif
+`ifndef __LINE__
+  `define __LINE__ 0
+`endif
+
 `ifndef TEST_FRAMEWORK
 `define TEST_FRAMEWORK
 package testFramework;
