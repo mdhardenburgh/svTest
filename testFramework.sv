@@ -1,3 +1,4 @@
+/* verilator lint_off DECLFILENAME */
 `ifndef TEST_FRAMEWORK
 `define TEST_FRAMEWORK
 package testFramework;
@@ -26,15 +27,15 @@ package testFramework;
             begin
                 if(format == "decimal")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
                 end
                 else if(format == "hex")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
                 end
                 else if(format == "binary")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
                 end
                 m_failures++;
             end
@@ -46,15 +47,15 @@ package testFramework;
             begin
                 if(format == "decimal")
                 begin
-                    $error("[%0s] EXPECT_NOT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_NOT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
                 end
                 else if(format == "hex")
                 begin
-                    $error("[%0s] EXPECT_NOT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_NOT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
                 end
                 else if(format == "binary")
                 begin
-                    $error("[%0s] EXPECT_NOT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_NOT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
                 end
                 m_failures++;
             end
@@ -64,7 +65,7 @@ package testFramework;
         function void EXPECT_EQ_INT(int a, int b, string msg="");
             if (a !== b) 
             begin
-                $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
+                $warning("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
                 m_failures++;
             end
         endfunction
@@ -73,7 +74,7 @@ package testFramework;
         function void EXPECT_EQ_STR(string a, string b, string msg="");
             if (a != b) 
             begin
-                $error("[%0s] EXPECT_EQ failed: %s  (got %s, want %s)", m_testName, msg, a, b);
+                $warning("[%0s] EXPECT_EQ failed: %s  (got %s, want %s)", m_testName, msg, a, b);
                 m_failures++;
             end
         endfunction
@@ -130,15 +131,15 @@ package testFramework;
             begin
                 if(format == "decimal")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_EQ failed: %s  (got %0d, want %0d)", m_testName, msg, a, b);
                 end
                 else if(format == "hex")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_EQ failed: %s  (got 0x%h, want 0x%h)", m_testName, msg, a, b);
                 end
                 else if(format == "binary")
                 begin
-                    $error("[%0s] EXPECT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
+                    $warning("[%0s] EXPECT_EQ failed: %s  (got %b, want %b)", m_testName, msg, a, b);
                 end
                 m_failures++;
             end
@@ -179,13 +180,13 @@ package testFramework;
                     break;
                 end
             end
-            if(found)
+            if(found > 0)
             begin
                 summary();
             end
             else
             begin
-                $error("TestManager: no test named '%0s' found", testName);
+                $warning("TestManager: no test named '%0s' found", testName);
                 $fatal;
             end
         endfunction
@@ -208,13 +209,13 @@ package testFramework;
                     break;
                 end
             end
-            if(found)
+            if(found > 0)
             begin
                 summary();
             end
             else
             begin
-                $error("TestManager: no test named '%0s' found", testName);
+                $warning("TestManager: no test named '%0s' found", testName);
                 $fatal;
             end
         endtask
@@ -344,7 +345,7 @@ package testFramework;
     SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_A``: assert property(SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_P``) \
         else \
         begin \
-            $error("%s.%s_CONCURENT_ASSERTION FAILED in test: %s", `"SUITE`", `"NAME`", TestManager::getConcurrentTask()); \
+            $warning("%s.%s_CONCURENT_ASSERTION FAILED in test: %s", `"SUITE`", `"NAME`", TestManager::getConcurrentTask()); \
             TestManager::setConcurentFailure(); \
         end
 
@@ -353,7 +354,7 @@ package testFramework;
     SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_A``: assert property(SUITE``_``NAME``_CONCURENT_PROPERTY_ERROR_P``) \
         else \
         begin \
-            $error("%s.%s_CONCURENT_ASSERTION FAILED in test: %s", `"SUITE`", `"NAME`", TestManager::getConcurrentTask()); \
+            $warning("%s.%s_CONCURENT_ASSERTION FAILED in test: %s", `"SUITE`", `"NAME`", TestManager::getConcurrentTask()); \
             TestManager::setConcurentFailure();
 
     `define END_CONCURENT_PROPERTY_ERROR_PRINT_END_PRINT \
@@ -361,3 +362,4 @@ package testFramework;
 
 endpackage
 `endif
+/* verilator lint_on DECLFILENAME */
