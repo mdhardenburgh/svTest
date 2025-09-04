@@ -254,13 +254,7 @@ package testFramework;
         endfunction
     endclass
 
-    `ifndef __FILE__
-        `define __FILE__ "unknown"
-    `endif
-    `ifndef __LINE__
-        `define __LINE__ 0
-    `endif
-    `define REPORT()  $sformatf("%s: %0d", `__FILE__, `__LINE__)
+    `define REPORT ($sformatf("%s: %0d", `__FILE__, `__LINE__))
 
     // Macro to define + register a test case
     `define TEST_FUNCTION(SUITE, NAME) \
